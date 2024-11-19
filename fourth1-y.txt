@@ -1,0 +1,57 @@
+%{
+    #include <stdio.h>
+    #include <stdlib.h>
+    int yylex();
+    int yyerror(char *msg);
+%}
+
+%union {
+    int num;
+    char var;
+}
+
+%token <num> NUM
+%token <var> VAR
+
+%left '+' '-'
+%left '*' '/'
+%right '^'           
+%right NEGATIVE      
+
+%type <num> E
+
+%%
+
+S:  E { printf(""); }
+    ;
+
+E:  E '+' E { printf("+ "); }
+    | E '-' E { printf("- "); }
+    | E '*' E { printf("* "); }
+    | E '/' E {
+          if ($3 == 0) {
+              yyerror("division by zero");
+              exit(1);
+          } else {
+              printf("/ ");
+          }
+      }
+    | E '^' E { printf("^ "); }      
+    | '(' E ')' { /* Do nothing*/ }
+    | '-' E %prec NEGATIVE { printf("- "); }
+    | NUM { printf("%d ", $1); }
+    | VAR { printf("%c ", $1); }
+    ;
+
+%%
+
+int main() {
+    printf("expression:");
+    yyparse();
+    return 0;
+}
+
+int yyerror(char *msg) {
+    fprintf(stderr, "Error: %s\n", msg);
+    return 0;
+}
