@@ -1,0 +1,148 @@
+#include <stdio.h>
+#include <ctype.h>
+#include <string.h>
+
+#define MAX_TOKEN_LENGTH 100
+#define MAX_INPUT_LENGTH 256
+
+// Array of C language keywords
+const char *keywords[] = {
+    "int", "return", "scanf", "if", "else", "while", "for", "do", "switch",
+    "case", "default", "break", "continue", "void", "char", "float", "double",
+    "long", "short", "unsigned", "signed", "static", "struct", "union",
+    "enum", "typedef", "const", "sizeof", "volatile", "extern", "register",
+    "auto", "goto", "include", "define", NULL
+};
+
+// Function to check if a token is a keyword
+int isKeyword(const char *token) {
+    for (int i = 0; keywords[i] != NULL; i++) {
+        if (strcmp(token, keywords[i]) == 0) {
+            return 1;
+        }
+    }
+    return 0;
+}
+
+// Function to print operator names
+void printOperatorName(char c) {
+    switch (c) {
+        case '+': printf("Operator: Addition (+)\n\n"); break;
+        case '-': printf("Operator: Subtraction (-)\n\n"); break;
+        case '*': printf("Operator: Multiplication (*)\n\n"); break;
+        case '/': printf("Operator: Division (/)\n\n"); break;
+        case '=': printf("Operator: Assignment (=)\n\n"); break;
+        case '<': printf("Operator: Less than (<)\n\n"); break;
+        case '>': printf("Operator: Greater than (>)\n\n"); break;
+        case '&': printf("Operator: Logical AND (&)\n\n"); break;
+        case '|': printf("Operator: Logical OR (|)\n\n"); break;
+        case '!': printf("Operator: Logical NOT (!)\n\n"); break;
+        case '^': printf("Operator: Bitwise XOR (^)\n\n"); break;
+        case '%': printf("Operator: Modulus (%)\n\n"); break;
+        case '(': printf("Special Character: Left parenthesis (\n)\n\n"); break;
+        case ')': printf("Special Character: Right parenthesis ())\n\n"); break;
+        case '{': printf("Special Character: Left curly brace ({)\n\n"); break;
+        case '}': printf("Special Character: Right curly brace (})\n\n"); break;
+        case '[': printf("Special Character: Left square bracket ([)\n\n"); break;
+        case ']': printf("Special Character: Right square bracket (])\n\n"); break;
+        case ',': printf("Special Character: Comma (,)\n\n"); break;
+        case ';': printf("Special Character: Semicolon (;)\n\n"); break;
+        default: break;
+    }
+}
+
+// Function to identify tokens in the input
+void identifyTokens(char *input) {
+    char token[MAX_TOKEN_LENGTH];
+    int i = 0, j = 0;
+
+    while (input[i] != '\0') {
+        // Skip whitespace
+        if (isspace(input[i])) {
+            i++;
+            continue;
+        }
+
+        // Identifiers and Keywords
+        if (isalpha(input[i]) || input[i] == '_') {
+            while (isalpha(input[i]) || isdigit(input[i]) || input[i] == '_') {
+                token[j++] = input[i++];
+            }
+            token[j] = '\0';
+            if (isKeyword(token)) {
+                printf("Keyword: %s\n\n", token);
+            } else {
+                printf("Identifier: %s\n\n", token);
+            }
+            j = 0;
+        }
+
+        // Numbers
+        else if (isdigit(input[i])) {
+            while (isdigit(input[i])) {
+                token[j++] = input[i++];
+            }
+            token[j] = '\0';
+            printf("Number: %s\n\n", token);
+            j = 0;
+        }
+
+        // Operators
+        else if (strchr("+-*/=<>!&|^%", input[i])) {
+            token[j++] = input[i++];
+            if ((token[0] == '=' || token[0] == '!' || token[0] == '<' || token[0] == '>') && input[i] == '=') {
+                token[j++] = input[i++];
+            } else if ((token[0] == '&' || token[0] == '|') && input[i] == token[0]) {
+                token[j++] = input[i++];
+            }
+            token[j] = '\0';
+            printf("Operator: %s\n\n", token);
+            printOperatorName(token[0]);
+            j = 0;
+        }
+
+        // Special characters
+        else if (strchr("(){}[];,", input[i])) {
+            token[j++] = input[i++];
+            token[j] = '\0';
+            printOperatorName(token[0]);
+            j = 0;
+        }
+
+        // Ignore unrecognized characters
+        else {
+            i++;
+        }
+    }
+}
+
+int main() {
+    char input[MAX_INPUT_LENGTH];
+    FILE *file;
+
+    // Open the file
+    file = fopen("input.txt", "r");
+    if (file == NULL) {
+        printf("Error: Could not open file.\n");
+        return 1;
+    }
+
+    printf("Processing file content...\n\n");
+
+    // Read file line by line and process
+    while (fgets(input, sizeof(input), file) != NULL) {
+        // Remove the trailing newline character, if present
+        size_t len = strlen(input);
+        if (len > 0 && input[len - 1] == '\n') {
+            input[len - 1] = '\0';
+        }
+
+        printf("Input line: %s\n\n", input);
+        identifyTokens(input);
+    }
+
+    // Close the file
+    fclose(file);
+
+    return 0;
+}
