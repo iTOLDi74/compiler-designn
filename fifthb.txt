@@ -1,0 +1,174 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <ctype.h>
+
+#define MAX_VAR 10        // Maximum number of variables
+#define MAX_EXPR_LEN 50   // Maximum length of each expression
+
+// Structure to store variables and their evaluated value or expression
+typedef struct {
+    char name;
+    int isEvaluated;          // 1 if evaluated, 0 if not
+    int value;                // The evaluated value if evaluated
+    char expr[MAX_EXPR_LEN];  // Store the expression if not evaluated
+} Variable;
+
+// Function to find the index of a variable in the array
+int findVariableIndex(Variable vars[], int count, char name) {
+    for (int i = 0; i < count; i++) {
+        if (vars[i].name == name) {
+            return i;
+        }
+    }
+    return -1;
+}
+
+// Function to evaluate a simple expression with two integers and an operator
+int evaluateSimpleExpression(int num1, char op, int num2) {
+    switch (op) {
+        case '+': return num1 + num2;
+        case '-': return num1 - num2;
+        case '*': return num1 * num2;
+        case '/': return num2 != 0 ? num1 / num2 : 0;
+    }
+    return 0;
+}
+
+// Function to apply strength reduction and algebraic transformations
+void applyStrengthReduction(char* expr) {
+    char transformedExpr[MAX_EXPR_LEN] = {0};
+    char* ptr = transformedExpr;
+    int len = strlen(expr);
+    for (int i = 0; i < len; i++) {
+        // If we have expressions like "*1", replace with nothing
+        if (expr[i] == '*' && expr[i + 1] == '1' && (i + 2 == len || !isalnum(expr[i + 2]))) {
+            i++;  // Skip "*1"
+        }
+        // If we have expressions like "+0" or "-0", replace with nothing
+        else if ((expr[i] == '+' || expr[i] == '-') && expr[i + 1] == '0' && (i + 2 == len || !isalnum(expr[i + 2]))) {
+            i++;  // Skip "+0" or "-0"
+        }
+        // If we have expressions like "*0", replace the entire result with "0"
+        else if (expr[i] == '*' && expr[i + 1] == '0') {
+            strcpy(transformedExpr, "0");
+            break;
+        } else {
+            *ptr++ = expr[i];
+        }
+    }
+    *ptr = '\0';
+    strcpy(expr, transformedExpr);  // Copy simplified expression back to original
+}
+
+// Function to evaluate an expression if it involves only numbers and operators
+int evaluateExpression(char* expr, Variable vars[], int count, int* success) {
+    int result = 0, temp;
+    char op = 0;
+    *success = 1;
+
+    // Apply algebraic transformations to simplify the expression
+    applyStrengthReduction(expr);
+
+    while (*expr) {
+        if (isdigit(*expr)) {
+            temp = strtol(expr, &expr, 10);
+            if (op) {
+                result = evaluateSimpleExpression(result, op, temp);
+                op = 0;
+            } else {
+                result = temp;
+            }
+        } else if (isalpha(*expr)) {
+            int idx = findVariableIndex(vars, count, *expr);
+            if (idx != -1 && vars[idx].isEvaluated) {
+                if (op) {
+                    result = evaluateSimpleExpression(result, op, vars[idx].value);
+                    op = 0;
+                } else {
+                    result = vars[idx].value;
+                }
+            } else {
+                *success = 0;  // Dependency on an unresolved variable
+                return 0;
+            }
+            expr++;
+        } else if (strchr("+-*/", *expr)) {
+            op = *expr;
+            expr++;
+        } else {
+            expr++;  // Skip any other characters
+        }
+    }
+    return result;
+}
+
+// Function to evaluate all expressions
+void evaluateExpressions(Variable vars[], int count) {
+    int progress, success;
+
+    // Loop until all variables are evaluated or no progress is made
+    do {
+        progress = 0;
+        for (int i = 0; i < count; i++) {
+            if (!vars[i].isEvaluated) {
+                int value = evaluateExpression(vars[i].expr, vars, count, &success);
+                if (success) {
+                    vars[i].value = value;
+                    vars[i].isEvaluated = 1;
+                    progress = 1;
+                }
+            }
+        }
+    } while (progress);
+}
+
+// Function to display the values or expressions of all variables
+void displayResults(Variable vars[], int count) {
+    for (int i = 0; i < count; i++) {
+        if (vars[i].isEvaluated) {
+            printf("%c = %d\n", vars[i].name, vars[i].value);
+        } else {
+            printf("%c = %s\n", vars[i].name, vars[i].expr);
+        }
+    }
+}
+
+int main() {
+    int count;
+    printf("Enter the number of expressions: ");
+    scanf("%d", &count);
+    getchar();  // Consume the newline character
+
+    Variable vars[MAX_VAR];
+    int varCount = 0;
+
+    // Input expressions from the user
+    for (int i = 0; i < count; i++) {
+        char input[MAX_EXPR_LEN];
+        printf("Enter expression (e.g., x=1*10): ");
+        fgets(input, MAX_EXPR_LEN, stdin);
+        input[strcspn(input, "\n")] = 0;  // Remove trailing newline
+
+        // Parse the expression into variable name and expression part
+        char varName;
+        char expr[MAX_EXPR_LEN];
+        if (sscanf(input, "%c=%[^\n]", &varName, expr) == 2) {
+            int idx = findVariableIndex(vars, varCount, varName);
+            if (idx == -1) {
+                idx = varCount++;
+                vars[idx].name = varName;
+            }
+            strcpy(vars[idx].expr, expr);
+            vars[idx].isEvaluated = 0;
+        }
+    }
+
+    // Evaluate expressions
+    evaluateExpressions(vars, varCount);
+
+    // Display the results
+    displayResults(vars, varCount);
+
+    return 0;
+}

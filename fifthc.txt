@@ -1,0 +1,163 @@
+#include <stdio.h>
+ #include <stdlib.h>
+ #include <string.h>
+ #include <ctype.h>
+ #define MAX_CODE_SIZE 100
+ #define MAX_TEMP 20
+ #define REG_COUNT 4
+ #define MAX_EXPR_LEN 50
+ typedef struct {
+    char op;        
+    char arg1[10];  
+    char arg2[10];  
+    char result[10];
+ } Instruction;
+ typedef struct {
+    char reg_name[3];
+    char content[10];
+    int busy;
+ } Register;
+ Instruction code[MAX_CODE_SIZE];
+ Register registers[REG_COUNT];
+ int nextInstr = 0;
+ int tempCount = 1;
+ void initRegisters() {
+    for(int i = 0; i < REG_COUNT; i++) {
+        sprintf(registers[i].reg_name, "R%d", i);
+        strcpy(registers[i].content, "");
+        registers[i].busy = 0;
+    }
+ }
+ int getFreeRegister() {
+    for(int i = 0; i < REG_COUNT; i++) {
+        if(!registers[i].busy) {
+            registers[i].busy = 1;
+            return i;
+        }
+    }
+    return 0;
+ }
+ int findRegister(char *var) {
+    for(int i = 0; i < REG_COUNT; i++) {
+        if(strcmp(registers[i].content, var) == 0) {
+            return i;
+        }
+    }
+    return -1;
+ }
+ void generateCode(Instruction instr) {
+    int reg1, reg2, result_reg;
+    reg1 = findRegister(instr.arg1);
+    reg2 = findRegister(instr.arg2);
+    if(reg1 == -1 && strlen(instr.arg1) > 0) {
+        reg1 = getFreeRegister();
+        printf("MOV %s, %s\n", registers[reg1].reg_name, instr.arg1);
+        strcpy(registers[reg1].content, instr.arg1);
+    }
+    if(reg2 == -1 && strlen(instr.arg2) > 0) {
+        reg2 = getFreeRegister();
+        printf("MOV %s, %s\n", registers[reg2].reg_name, instr.arg2);
+        strcpy(registers[reg2].content, instr.arg2);
+    }
+    result_reg = getFreeRegister();
+    switch(instr.op) {
+        case '+':
+            printf("ADD %s, %s, %s\n", 
+                   registers[result_reg].reg_name,
+                   registers[reg1].reg_name,
+                   registers[reg2].reg_name);
+            break;
+        case '-':
+            printf("SUB %s, %s, %s\n",
+                   registers[result_reg].reg_name,
+                   registers[reg1].reg_name,
+                   registers[reg2].reg_name);
+            break;
+        case '*':
+            printf("MUL %s, %s, %s\n",
+                   registers[result_reg].reg_name,
+                   registers[reg1].reg_name,
+                   registers[reg2].reg_name);
+            break;
+        case '/':
+            printf("DIV %s, %s, %s\n",
+                   registers[result_reg].reg_name,
+                   registers[reg1].reg_name,
+                   registers[reg2].reg_name);
+            break;
+        case '=':
+            printf("MOV %s, %s\n",
+                   registers[result_reg].reg_name,
+                   registers[reg1].reg_name);
+            break;
+    }
+    strcpy(registers[result_reg].content, instr.result);
+ }
+ void addInstruction(char op, char *arg1, char *arg2, char *result) {
+    Instruction instr;
+    instr.op = op;
+    strcpy(instr.arg1, arg1);
+    strcpy(instr.arg2, arg2);
+    strcpy(instr.result, result);
+    code[nextInstr++] = instr;
+ }
+ void parseExpression(char *expr, char *result) {
+    char arg1[10] = "", arg2[10] = "", op = '\0';
+    int i = 0, j = 0;
+    char temp[10];
+    while(expr[i] == ' ') i++;
+    while(expr[i] != '\0' && expr[i] != '+' && expr[i] != '-' && 
+          expr[i] != '*' && expr[i] != '/' && expr[i] != '=') {
+        if(expr[i] != ' ') {
+            arg1[j++] = expr[i];
+        }
+        i++;
+    }
+    arg1[j] = '\0';
+    while(expr[i] == ' ') i++;
+    if(expr[i] != '\0') {
+        op = expr[i++];
+    }
+    j
+ = 0;
+    while(expr[i] == ' ') i++;
+    while(expr[i] != '\0' && expr[i] != ' ') {
+        arg2[j++] = expr[i++];
+    }
+    arg2[j] = '\0';
+    if(result[0] == '\0') {
+        sprintf(temp, "t%d", tempCount++);
+        addInstruction(op, arg1, arg2, temp);
+    } else {
+        addInstruction(op, arg1, arg2, result);
+    }
+ }
+ int main() {
+    int n;
+    char expr[MAX_EXPR_LEN];
+    char result[10];
+    initRegisters();
+    printf("Enter number of expressions: ");
+    scanf("%d", &n);
+    getchar(); 
+    for(int i = 0; i < n; i++) {
+        printf("expr %d: ", i + 1);
+        fgets(expr, MAX_EXPR_LEN, stdin);
+        expr[strcspn(expr, "\n")] = 0; 
+        int j = 0;
+        while(expr[j] != '=') {
+            if(expr[j] != ' ') {
+                result[j] = expr[j];
+            }
+            j++;
+        }
+        result[j] = '\0';
+        parseExpression(expr + j + 1, result);
+    }
+    printf("\nGenerated Assembly Code:\n");
+    printf("------------------------\n");
+    for(int i = 0; i < nextInstr; i++) {
+        generateCode(code[i]);
+    }
+    return 0;
+ }
